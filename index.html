@@ -1,12 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Physics Game</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Warfare: Research & Combat</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-  <script src="script.js"></script>
+    <div class="game-container">
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Game HUD -->
+        <div class="hud">
+            <div class="hud-item">
+                <i class="fas fa-heart"></i>
+                <span id="health">100</span>
+            </div>
+            <div class="hud-item">
+                <i class="fas fa-bullseye"></i>
+                <span id="damage">20</span>
+            </div>
+            <div class="hud-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span id="speed">3.0</span>
+            </div>
+            <div class="hud-item currency">
+                <i class="fas fa-coins"></i>
+                <span id="researchPoints">150</span>
+            </div>
+        </div>
+        
+        <!-- Controls Info -->
+        <div class="controls-info">
+            <div><span class="key">WASD</span> Move</div>
+            <div><span class="key">MOUSE</span> Aim</div>
+            <div><span class="key">CLICK</span> Shoot</div>
+            <div><span class="key">T</span> Research Tree</div>
+            <div><span class="key">G</span> Garage</div>
+        </div>
+        
+        <!-- Enemy Counter -->
+        <div class="enemy-counter">
+            <i class="fas fa-robot"></i>
+            <span id="enemyCount">3</span>
+        </div>
+        
+        <!-- Research Tree Modal (Hidden by default) -->
+        <div class="modal" id="researchModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-sitemap"></i> Research & Development</h2>
+                    <button class="close-btn" id="closeResearch">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="research-tree">
+                        <!-- Tier 1 -->
+                        <div class="research-tier">
+                            <h3>Tier 1</h3>
+                            <div class="research-nodes">
+                                <div class="research-node unlocked" data-id="damage1">
+                                    <i class="fas fa-crosshairs"></i>
+                                    <h4>Improved Cannons</h4>
+                                    <p>+15% Damage</p>
+                                    <div class="cost">50 RP</div>
+                                </div>
+                                <div class="research-node" data-id="armor1">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <h4>Reinforced Armor</h4>
+                                    <p>+25% Health</p>
+                                    <div class="cost">50 RP</div>
+                                </div>
+                                <div class="research-node" data-id="speed1">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <h4>Engine Upgrade</h4>
+                                    <p>+20% Speed</p>
+                                    <div class="cost">50 RP</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tier 2 (Locked initially) -->
+                        <div class="research-tier locked">
+                            <h3><i class="fas fa-lock"></i> Tier 2 (Complete 1 Tier 1 research to unlock)</h3>
+                            <div class="research-nodes">
+                                <div class="research-node locked" data-id="damage2">
+                                    <i class="fas fa-fire"></i>
+                                    <h4>High-Explosive Shells</h4>
+                                    <p>+30% Damage</p>
+                                    <div class="cost">100 RP</div>
+                                </div>
+                                <div class="research-node locked" data-id="health2">
+                                    <i class="fas fa-heartbeat"></i>
+                                    <h4>Advanced Armor</h4>
+                                    <p>+50% Health</p>
+                                    <div class="cost">100 RP</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tier 3 (Locked initially) -->
+                        <div class="research-tier locked">
+                            <h3><i class="fas fa-lock"></i> Tier 3 (Complete Tier 2 to unlock)</h3>
+                            <div class="research-nodes">
+                                <div class="research-node locked" data-id="tank2">
+                                    <i class="fas fa-tank"></i>
+                                    <h4>Unlock: Heavy Tank</h4>
+                                    <p>New tank with 2x health</p>
+                                    <div class="cost">200 RP</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Garage Modal (Hidden by default) -->
+        <div class="modal" id="garageModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-warehouse"></i> Tank Garage</h2>
+                    <button class="close-btn" id="closeGarage">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="tank-selection">
+                        <div class="tank-option selected" data-tank="light">
+                            <div class="tank-icon">
+                                <i class="fas fa-tank"></i>
+                            </div>
+                            <h3>Light Tank</h3>
+                            <p>Fast and agile. Default tank.</p>
+                            <div class="tank-stats">
+                                <div><i class="fas fa-heart"></i> Health: 100</div>
+                                <div><i class="fas fa-bullseye"></i> Damage: 20</div>
+                                <div><i class="fas fa-tachometer-alt"></i> Speed: 3.0</div>
+                            </div>
+                            <div class="selected-badge">SELECTED</div>
+                        </div>
+                        
+                        <div class="tank-option locked" data-tank="heavy">
+                            <div class="tank-icon">
+                                <i class="fas fa-tank"></i>
+                                <div class="lock-overlay"><i class="fas fa-lock"></i></div>
+                            </div>
+                            <h3>Heavy Tank</h3>
+                            <p>Unlock in Research Tier 3</p>
+                            <div class="tank-stats">
+                                <div><i class="fas fa-heart"></i> Health: 200</div>
+                                <div><i class="fas fa-bullseye"></i> Damage: 35</div>
+                                <div><i class="fas fa-tachometer-alt"></i> Speed: 1.5</div>
+                            </div>
+                            <div class="locked-badge">LOCKED</div>
+                        </div>
+                        
+                        <div class="tank-option locked" data-tank="sniper">
+                            <div class="tank-icon">
+                                <i class="fas fa-tank"></i>
+                                <div class="lock-overlay"><i class="fas fa-lock"></i></div>
+                            </div>
+                            <h3>Sniper Tank</h3>
+                            <p>Coming in future update</p>
+                            <div class="tank-stats">
+                                <div><i class="fas fa-heart"></i> Health: 80</div>
+                                <div><i class="fas fa-bullseye"></i> Damage: 50</div>
+                                <div><i class="fas fa-tachometer-alt"></i> Speed: 2.5</div>
+                            </div>
+                            <div class="locked-badge">LOCKED</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notification System -->
+        <div class="notification" id="notification">
+            <span id="notificationText">Welcome to Tank Warfare!</span>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
 </body>
 </html>
