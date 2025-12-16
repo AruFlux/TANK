@@ -1,79 +1,323 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Tank Game</title>
+    <title>Realistic Tank Combat</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; }
-        canvas { display: block; }
-        #ui {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-family: Arial;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 5px;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a14;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
         }
-        #researchModal, #garageModal {
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        /* HUD */
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #5a5a5a;
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 250px;
+            backdrop-filter: blur(5px);
+        }
+        .hud-section {
+            margin-bottom: 15px;
+        }
+        .hud-title {
+            color: #8b8b8b;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .hud-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .stat-bar {
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            margin-top: 3px;
+            overflow: hidden;
+        }
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+        .health-fill { background: #e74c3c; }
+        .fuel-fill { background: #3498db; }
+        .ammo-fill { background: #f39c12; }
+        
+        /* Research Tree */
+        #researchModal {
             display: none;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9);
-            color: white;
-            padding: 20px;
+            width: 800px;
+            max-width: 90%;
+            height: 600px;
+            background: rgba(20, 20, 30, 0.95);
+            border: 2px solid #5a5a5a;
             border-radius: 10px;
-            border: 2px solid #3498db;
-            z-index: 100;
+            padding: 20px;
+            z-index: 1000;
+            overflow-y: auto;
         }
-        button { 
-            margin: 5px; 
-            padding: 10px; 
-            cursor: pointer;
-            background: #3498db;
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+        }
+        .modal-header h2 {
+            color: #f39c12;
+        }
+        .close-btn {
+            background: #c0392b;
             color: white;
             border: none;
-            border-radius: 5px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
         }
-        button:hover { background: #2980b9; }
+        .research-tier {
+            margin-bottom: 30px;
+            padding: 15px;
+            background: rgba(40, 40, 50, 0.5);
+            border-radius: 8px;
+        }
+        .tier-title {
+            color: #3498db;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .research-node {
+            display: inline-block;
+            background: rgba(60, 60, 70, 0.8);
+            border: 2px solid #666;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            width: 180px;
+            vertical-align: top;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .research-node:hover {
+            border-color: #f39c12;
+            transform: translateY(-2px);
+        }
+        .research-node.unlocked {
+            background: rgba(46, 125, 50, 0.3);
+            border-color: #4caf50;
+        }
+        .node-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #f39c12;
+        }
+        .node-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .node-desc {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        .node-cost {
+            background: #f39c12;
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        /* Controls */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        .control-item {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+        }
+        .key {
+            background: #333;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-right: 10px;
+            min-width: 60px;
+            text-align: center;
+            border: 1px solid #555;
+        }
+        
+        /* Damage Indicators */
+        .damage-indicator {
+            position: absolute;
+            width: 100px;
+            height: 30px;
+            background: rgba(231, 76, 60, 0.8);
+            border-radius: 4px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
     
-    <div id="ui">
-        <div>Health: <span id="health">100</span></div>
-        <div>Damage: <span id="damage">20</span></div>
-        <div>Speed: <span id="speed">3.0</span></div>
-        <div>Research Points: <span id="points">100</span></div>
-        <div>Enemies: <span id="enemyCount">3</span></div>
-        <br>
-        <button onclick="showResearch()">Research Tree (T)</button>
-        <button onclick="showGarage()">Garage (G)</button>
-        <button onclick="togglePause()">Pause (P)</button>
+    <!-- HUD -->
+    <div class="hud">
+        <div class="hud-section">
+            <div class="hud-title">Tank Status</div>
+            <div class="hud-value" id="tankName">M4 Sherman</div>
+            <div class="hud-value" id="crewStatus">Crew: 5/5</div>
+            
+            <div class="stat-bar">
+                <div class="stat-fill health-fill" id="healthBar" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 12px; color: #aaa;">HP: <span id="healthValue">100</span>%</div>
+            
+            <div class="stat-bar">
+                <div class="stat-fill fuel-fill" id="fuelBar" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 12px; color: #aaa;">Fuel: <span id="fuelValue">100</span>%</div>
+            
+            <div class="stat-bar">
+                <div class="stat-fill ammo-fill" id="ammoBar" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 12px; color: #aaa;">Ammo: <span id="ammoValue">30</span>/30</div>
+        </div>
+        
+        <div class="hud-section">
+            <div class="hud-title">Combat</div>
+            <div class="hud-value">Damage: <span id="damageValue">120mm</span></div>
+            <div class="hud-value">Penetration: <span id="penValue">125mm</span></div>
+            <div class="hud-value">Reload: <span id="reloadValue">8.3s</span></div>
+            <div class="hud-value">Shell: <span id="shellType">AP</span></div>
+        </div>
+        
+        <div class="hud-section">
+            <div class="hud-title">Resources</div>
+            <div class="hud-value">Silver Lions: <span id="silver">15,000</span></div>
+            <div class="hud-value">Research: <span id="rp">1,250</span> RP</div>
+            <div class="hud-value">Enemies: <span id="enemies">3</span></div>
+        </div>
+        
+        <button onclick="toggleResearch()" style="margin-top: 15px; padding: 8px 15px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+            RESEARCH TREE (T)
+        </button>
     </div>
     
+    <!-- Research Modal -->
     <div id="researchModal">
-        <h2>Research Tree</h2>
-        <div id="researchNodes">
-            <button onclick="buyResearch('damage1')">+15% Damage (50 RP)</button>
-            <button onclick="buyResearch('health1')">+25% Health (50 RP)</button>
-            <button onclick="buyResearch('speed1')">+20% Speed (50 RP)</button>
+        <div class="modal-header">
+            <h2>🛠️ Research & Development</h2>
+            <button class="close-btn" onclick="toggleResearch()">×</button>
         </div>
-        <br>
-        <button onclick="hideResearch()">Close (ESC)</button>
+        
+        <div class="research-tier">
+            <div class="tier-title">📊 Tier I - Basic Improvements</div>
+            <div class="research-node" data-id="engine1" onclick="research('engine1')">
+                <div class="node-icon">🚀</div>
+                <div class="node-title">Engine Upgrade</div>
+                <div class="node-desc">Increase engine power by 20%</div>
+                <div class="node-cost">1,000 RP</div>
+            </div>
+            <div class="research-node" data-id="gun1" onclick="research('gun1')">
+                <div class="node-icon">🎯</div>
+                <div class="node-title">76mm Gun</div>
+                <div class="node-desc">Upgrade to 76mm main gun</div>
+                <div class="node-cost">2,500 RP</div>
+            </div>
+            <div class="research-node" data-id="armor1" onclick="research('armor1')">
+                <div class="node-icon">🛡️</div>
+                <div class="node-title">Wet Ammo Storage</div>
+                <div class="node-desc">Reduce ammo rack explosion chance</div>
+                <div class="node-cost">1,500 RP</div>
+            </div>
+        </div>
+        
+        <div class="research-tier">
+            <div class="tier-title">⚙️ Tier II - Advanced Systems</div>
+            <div class="research-node locked" data-id="engine2" onclick="research('engine2')">
+                <div class="node-icon">⚡</div>
+                <div class="node-title">Supercharged Engine</div>
+                <div class="node-desc">+35% power, -10% fuel efficiency</div>
+                <div class="node-cost">5,000 RP</div>
+            </div>
+            <div class="research-node locked" data-id="gun2" onclick="research('gun2')">
+                <div class="node-icon">💥</div>
+                <div class="node-title">90mm Gun M3</div>
+                <div class="node-desc">Significant penetration increase</div>
+                <div class="node-cost">7,500 RP</div>
+            </div>
+        </div>
+        
+        <div class="research-tier">
+            <div class="tier-title">🏆 Tier III - New Vehicles</div>
+            <div class="research-node locked" data-id="tank2" onclick="research('tank2')">
+                <div class="node-icon">🇺🇸</div>
+                <div class="node-title">M4A3E2 "Jumbo"</div>
+                <div class="node-desc">Heavily armored assault tank</div>
+                <div class="node-cost">15,000 RP</div>
+            </div>
+            <div class="research-node locked" data-id="tank3" onclick="research('tank3')">
+                <div class="node-icon">🇺🇸</div>
+                <div class="node-title">M18 Hellcat</div>
+                <div class="node-desc">Fast tank destroyer</div>
+                <div class="node-cost">12,000 RP</div>
+            </div>
+        </div>
     </div>
     
-    <div id="garageModal">
-        <h2>Tank Garage</h2>
-        <div id="tankOptions">
-            <button onclick="selectTank('light')">Light Tank (Selected)</button>
-            <button onclick="selectTank('heavy')" disabled>Heavy Tank (Locked)</button>
-        </div>
-        <br>
-        <button onclick="hideGarage()">Close (ESC)</button>
+    <!-- Damage Indicator -->
+    <div class="damage-indicator" id="damageIndicator">
+        HIT! -<span id="damageAmount">0</span>
+    </div>
+    
+    <!-- Controls -->
+    <div class="controls">
+        <div class="control-item"><span class="key">W/S</span> Throttle</div>
+        <div class="control-item"><span class="key">A/D</span> Steering</div>
+        <div class="control-item"><span class="key">MOUSE</span> Aim Gun</div>
+        <div class="control-item"><span class="key">LMB</span> Fire Main Gun</div>
+        <div class="control-item"><span class="key">RMB</span> Zoom (Hold)</div>
+        <div class="control-item"><span class="key">SPACE</span> Brake</div>
+        <div class="control-item"><span class="key">T</span> Research Tree</div>
+        <div class="control-item"><span class="key">R</span> Reload Shell</div>
+        <div class="control-item"><span class="key">1-4</span> Select Ammo Type</div>
     </div>
 
     <script src="game.js"></script>
