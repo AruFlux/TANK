@@ -3,160 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M1 Abrams Tank Status</title>
+    <title>M1 Abrams - Advanced Tank Combat</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Additional styles for M1 Abrams specific UI */
+        .flag-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 40, 40, 0.9);
+            border: 2px solid #00ffcc;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        
+        .proximity-zoom-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, transparent 150px, rgba(0, 0, 0, 0.9) 300px);
+            pointer-events: none;
+            display: none;
+            z-index: 50;
+        }
+    </style>
 </head>
 <body>
-    <button class="research-button" onclick="toggleResearchTree()">RESEARCH TREE (T)</button>
-
-    <div class="tank-container">
-        <div class="tank-header">
-            <div class="tank-name">M1 ABRAMS</div>
-            <div class="tank-model">Main Battle Tank</div>
-        </div>
-
-        <div class="status-grid">
-            <div class="status-card">
-                <h3>TANK STATUS</h3>
-                <div class="status-item">
-                    <span class="status-label">Crew:</span>
-                    <span class="status-value">4/4</span>
+    <div class="hud-overlay">
+        <!-- Top Status Bar -->
+        <div class="top-status-bar">
+            <div class="tank-name-display">
+                <span class="tank-rank">M1 ABRAMS</span>
+                <span class="tank-tier">Rank VII - MBT</span>
+            </div>
+            
+            <div class="resource-display">
+                <div class="resource">
+                    <span class="resource-icon">🦁</span>
+                    <span id="silverLions">125,000</span>
                 </div>
-                <div class="status-item">
-                    <span class="status-label">HP:</span>
-                    <span class="status-value" id="hp-value">100%</span>
+                <div class="resource">
+                    <span class="resource-icon">⚡</span>
+                    <span id="researchPoints">8,500</span>
                 </div>
-                <div class="bar-container">
-                    <div class="bar-fill hp-bar" id="hp-bar"></div>
+                <div class="resource">
+                    <span class="resource-icon">🎯</span>
+                    <span id="enemyCount">0/12</span>
                 </div>
-                <div class="status-item">
-                    <span class="status-label">Fuel:</span>
-                    <span class="status-value" id="fuel-value">100%</span>
-                </div>
-                <div class="bar-container">
-                    <div class="bar-fill fuel-bar" id="fuel-bar"></div>
+                <div class="resource">
+                    <span class="resource-icon">🛡️</span>
+                    <span id="allyCount">3/3</span>
                 </div>
             </div>
-
-            <div class="status-card">
-                <h3>AMMUNITION</h3>
-                <div class="ammo-grid">
-                    <div class="ammo-cell">
-                        <div class="ammo-count" id="ammo-ap">42</div>
-                        <div class="ammo-type">APFSDS</div>
-                    </div>
-                    <div class="ammo-cell">
-                        <div class="ammo-count" id="ammo-he">40</div>
-                        <div class="ammo-type">HEAT</div>
-                    </div>
-                    <div class="ammo-cell">
-                        <div class="ammo-count" id="ammo-smoke">10</div>
-                        <div class="ammo-type">SMOKE</div>
+        </div>
+        
+        <!-- Bottom Combat HUD -->
+        <div class="combat-hud">
+            <div class="status-panel">
+                <div class="status-group">
+                    <div class="status-label">CREW</div>
+                    <div class="status-value" id="crewStatus">4/4</div>
+                </div>
+                
+                <div class="status-group">
+                    <div class="status-label">HP</div>
+                    <div class="status-value" id="healthValue">100%</div>
+                    <div class="status-bar">
+                        <div class="bar-fill" id="healthBar" style="width: 100%"></div>
                     </div>
                 </div>
-            </div>
-
-            <div class="status-card">
-                <h3>COMBAT</h3>
-                <div class="status-item">
-                    <span class="status-label">Damage:</span>
-                    <span class="status-value">120mm</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Penetration:</span>
-                    <span class="status-value">450mm</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Reload:</span>
-                    <span class="status-value">6.0s</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Shell:</span>
-                    <span class="status-value">APFSDS</span>
+                
+                <div class="status-group">
+                    <div class="status-label">FUEL</div>
+                    <div class="status-value" id="fuelValue">100%</div>
+                    <div class="status-bar">
+                        <div class="bar-fill fuel" id="fuelBar" style="width: 100%"></div>
+                    </div>
                 </div>
             </div>
-
-            <div class="status-card">
-                <h3>RESOURCES</h3>
-                <div class="status-item">
-                    <span class="status-label">Silver Lions:</span>
-                    <span class="status-value" id="silver">28,000</span>
+            
+            <div class="ammo-panel">
+                <div class="shell-selector">
+                    <div class="shell-option active" data-type="apfsds">
+                        <span class="shell-icon">→</span>
+                        <span class="shell-name">APFSDS</span>
+                        <span class="shell-count" id="apfsdsCount">42</span>
+                    </div>
+                    <div class="shell-option" data-type="heat">
+                        <span class="shell-icon">💥</span>
+                        <span class="shell-name">HEAT</span>
+                        <span class="shell-count" id="heatCount">40</span>
+                    </div>
+                    <div class="shell-option" data-type="smoke">
+                        <span class="shell-icon">☁️</span>
+                        <span class="shell-name">SMOKE</span>
+                        <span class="shell-count" id="smokeCount">10</span>
+                    </div>
                 </div>
-                <div class="status-item">
-                    <span class="status-label">Research:</span>
-                    <span class="status-value" id="research">5,500 RP</span>
+                
+                <div class="reload-indicator">
+                    <div class="reload-label">RELOAD</div>
+                    <div class="reload-value" id="reloadTime">6.0s</div>
+                    <div class="reload-bar">
+                        <div class="reload-fill" id="reloadBar"></div>
+                    </div>
                 </div>
-                <div class="status-item">
-                    <span class="status-label">Enemies:</span>
-                    <span class="status-value" id="enemies">8</span>
+            </div>
+            
+            <div class="combat-info">
+                <div class="info-row">
+                    <span class="info-label">DAMAGE:</span>
+                    <span class="info-value">120mm</span>
                 </div>
-                <div class="status-item">
-                    <span class="status-label">Allies:</span>
-                    <span class="status-value" id="allies">4</span>
+                <div class="info-row">
+                    <span class="info-label">PENETRATION:</span>
+                    <span class="info-value">450mm</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">ZOOM:</span>
+                    <span class="info-value" style="color: #ff4444">DISABLED</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">RANGE:</span>
+                    <span class="info-value">2000m / 800m</span>
                 </div>
             </div>
         </div>
-
-        <div class="game-status">
-            <h3>GAME STATUS</h3>
-            <div class="status-item">
-                <span class="status-label">Capture Points:</span>
-                <span class="status-value" id="capture-points">2/3</span>
+        
+        <!-- Flag Capture Display -->
+        <div class="flag-indicator">
+            <div class="flag-status">
+                <span class="flag-label">FLAGS:</span>
+                <span class="flag-value" id="flagCount">0/3</span>
             </div>
-            <div class="status-item">
-                <span class="status-label">Flags Held:</span>
-                <span class="status-value" id="flags-held">1</span>
-            </div>
-            <div class="flags-container">
-                <div class="flag" id="flag-1"></div>
-                <div class="flag captured" id="flag-2"></div>
-                <div class="flag" id="flag-3"></div>
+            <div class="capture-progress">
+                <div class="capture-bar">
+                    <div class="capture-fill" id="captureBar"></div>
+                </div>
+                <div class="capture-timer" id="captureTimer">0s</div>
             </div>
         </div>
-
-        <div class="status-card">
-            <h3>SETTINGS</h3>
-            <div class="status-item">
-                <span class="status-label">Zoom:</span>
-                <span class="status-value">DISABLED</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Zoom-Out Range:</span>
-                <span class="status-value">2000m</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Zoom-In Range:</span>
-                    <span class="status-value">800m</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Proximity Alert:</span>
-                <span class="status-value" id="proximity-status">ON</span>
-            </div>
+        
+        <!-- Minimap -->
+        <div class="minimap" id="minimap">
+            <div class="player-dot" id="playerDot"></div>
+            <!-- Enemy and ally dots will be added here -->
         </div>
-
-        <div class="controls">
-            <button class="control-btn" onclick="captureFlag()">CAPTURE FLAG</button>
-            <button class="control-btn" onclick="fireShell()">FIRE MAIN GUN</button>
-            <button class="control-btn" onclick="repairTank()">REPAIR TANK</button>
-            <button class="control-btn danger" onclick="toggleProximityAlert()">TOGGLE PROXIMITY</button>
+        
+        <!-- Proximity Alert -->
+        <div class="proximity-alert" id="proximityAlert">
+            ⚠️ ENEMY DETECTED NEARBY!
         </div>
-
-        <div class="zoom-controls">
-            <div class="zoom-display">
-                <div>ZOOM: DISABLED</div>
-                <div>Detection Range: 800m</div>
-            </div>
+        
+        <!-- Damage Indicators -->
+        <div class="damage-indicator" id="damageIndicator">
+            <span id="damageAmount">0</span>
         </div>
     </div>
-
-    <div class="proximity-alert" id="proximity-alert">
-        ⚠️ ENEMY DETECTED NEARBY!
+    
+    <!-- Proximity Zoom Overlay -->
+    <div class="proximity-zoom-overlay" id="proximityZoom"></div>
+    
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Modal Windows -->
+    <div id="researchModal" class="modal">
+        <div class="modal-content">
+            <h2>RESEARCH TREE</h2>
+            <div class="research-tree">
+                <div class="research-node" data-id="m1a1">
+                    <div class="node-name">M1A1 Abrams</div>
+                    <div class="node-cost">15,000 RP</div>
+                </div>
+                <div class="research-node" data-id="m1a2">
+                    <div class="node-name">M1A2 Abrams</div>
+                    <div class="node-cost">45,000 RP</div>
+                </div>
+                <div class="research-node" data-id="m1a2sep">
+                    <div class="node-name">M1A2 SEP</div>
+                    <div class="node-cost">85,000 RP</div>
+                </div>
+            </div>
+            <button onclick="hideResearch()">CLOSE</button>
+        </div>
     </div>
-
-    <div class="enemy-dots" id="enemy-dots"></div>
-
-    <div class="notification" id="notification"></div>
-
-    <script src="game.js"></script>
+    
+    <script src="m1abrams.js"></script>
 </body>
 </html>
