@@ -1,15 +1,484 @@
-body {
-  margin: 0;
-  background: #111;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  color: white;
-  font-family: sans-serif;
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-canvas {
-  border: 2px solid white;
-  background: #222;
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Canvas */
+#gameCanvas {
+    display: block;
+    background: linear-gradient(to bottom, #0f3460 0%, #1a1a2e 100%);
+    width: 100%;
+    height: 100%;
+}
+
+/* HUD */
+.hud {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: 2px solid #3498db;
+    backdrop-filter: blur(5px);
+    z-index: 10;
+}
+
+.hud-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.hud-item i {
+    color: #3498db;
+    font-size: 1.3rem;
+}
+
+.currency i {
+    color: #f1c40f;
+}
+
+/* Controls Info */
+.controls-info {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid #2ecc71;
+    backdrop-filter: blur(5px);
+    z-index: 10;
+}
+
+.controls-info div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+}
+
+.key {
+    background: #2c3e50;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    color: #3498db;
+    min-width: 70px;
+    text-align: center;
+    border: 1px solid #3498db;
+}
+
+/* Enemy Counter */
+.enemy-counter {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(231, 76, 60, 0.8);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 2px solid #c0392b;
+    z-index: 10;
+}
+
+.enemy-counter i {
+    font-size: 1.5rem;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: linear-gradient(145deg, #1a1a2e 0%, #0f3460 100%);
+    width: 90%;
+    max-width: 900px;
+    max-height: 85vh;
+    border-radius: 15px;
+    border: 3px solid #3498db;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    background: rgba(52, 152, 219, 0.2);
+    padding: 20px 30px;
+    border-bottom: 2px solid #3498db;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    color: #3498db;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.close-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    font-size: 2rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s;
+}
+
+.close-btn:hover {
+    background: #c0392b;
+    transform: scale(1.1);
+}
+
+.modal-body {
+    padding: 25px;
+    overflow-y: auto;
+    max-height: 65vh;
+}
+
+/* Research Tree */
+.research-tier {
+    margin-bottom: 40px;
+}
+
+.research-tier h3 {
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(52, 152, 219, 0.5);
+    color: #3498db;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.research-tier.locked h3 {
+    color: #7f8c8d;
+}
+
+.research-nodes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.research-node {
+    background: rgba(44, 62, 80, 0.7);
+    border: 2px solid #3498db;
+    border-radius: 10px;
+    padding: 20px;
+    width: 200px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.research-node:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+    border-color: #2ecc71;
+}
+
+.research-node.unlocked {
+    background: rgba(46, 204, 113, 0.1);
+    border-color: #2ecc71;
+}
+
+.research-node.locked {
+    background: rgba(127, 140, 141, 0.3);
+    border-color: #7f8c8d;
+    cursor: not-allowed;
+}
+
+.research-node.locked:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: #7f8c8d;
+}
+
+.research-node i {
+    font-size: 2.5rem;
+    color: #3498db;
+    margin-bottom: 15px;
+}
+
+.research-node.unlocked i {
+    color: #2ecc71;
+}
+
+.research-node h4 {
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 10px;
+    color: #ecf0f1;
+}
+
+.research-node p {
+    color: #bdc3c7;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+
+.cost {
+    background: #f39c12;
+    color: #2c3e50;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: inline-block;
+}
+
+/* Tank Selection */
+.tank-selection {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.tank-option {
+    background: rgba(44, 62, 80, 0.7);
+    border: 2px solid #3498db;
+    border-radius: 15px;
+    padding: 25px;
+    width: 250px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+}
+
+.tank-option:hover {
+    transform: translateY(-5px);
+    border-color: #2ecc71;
+}
+
+.tank-option.selected {
+    background: rgba(46, 204, 113, 0.1);
+    border-color: #2ecc71;
+    box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+}
+
+.tank-option.locked {
+    background: rgba(127, 140, 141, 0.3);
+    border-color: #7f8c8d;
+    cursor: not-allowed;
+}
+
+.tank-option.locked:hover {
+    transform: none;
+    border-color: #7f8c8d;
+}
+
+.tank-icon {
+    font-size: 4rem;
+    color: #3498db;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.selected .tank-icon {
+    color: #2ecc71;
+}
+
+.lock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    color: #f1c40f;
+}
+
+.tank-option h3 {
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 10px;
+    color: #ecf0f1;
+}
+
+.tank-option p {
+    color: #bdc3c7;
+    margin-bottom: 20px;
+    min-height: 40px;
+}
+
+.tank-stats {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 10px;
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.tank-stats div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+}
+
+.tank-stats i {
+    color: #3498db;
+    width: 20px;
+}
+
+.selected .tank-stats i {
+    color: #2ecc71;
+}
+
+.selected-badge, .locked-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.selected-badge {
+    background: #2ecc71;
+    color: #2c3e50;
+}
+
+.locked-badge {
+    background: #e74c3c;
+    color: white;
+}
+
+/* Notification */
+.notification {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(52, 152, 219, 0.9);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    text-align: center;
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 2px solid #2980b9;
+}
+
+.notification.show {
+    opacity: 1;
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateX(-50%) translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hud {
+        top: 10px;
+        left: 10px;
+        padding: 8px 15px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .controls-info {
+        bottom: 10px;
+        left: 10px;
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+    
+    .key {
+        min-width: 60px;
+        padding: 3px 8px;
+    }
+    
+    .enemy-counter {
+        top: 10px;
+        right: 10px;
+        padding: 8px 15px;
+        font-size: 1.1rem;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .research-nodes, .tank-selection {
+        justify-content: center;
+    }
 }
