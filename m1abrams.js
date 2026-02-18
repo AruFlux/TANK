@@ -242,7 +242,7 @@ class M1AbramsGame {
                 targetPosition: null,
                 lastShot: 0,
                 shells: 40,
-                spotted: false,
+                spotted: true,
                 lastKnownPosition: null,
                 isDestroyed: false
             });
@@ -493,6 +493,8 @@ class M1AbramsGame {
 
         if (Math.abs(speedDiff) > 0.1) {
             tank.speed += Math.sign(speedDiff) * acceleration * deltaTime * 2.35 * lowFuelPenalty;
+        if (Math.abs(speedDiff) > 0.1) {
+            tank.speed += Math.sign(speedDiff) * acceleration * deltaTime * 2.35 * lowFuelPenalty;
         const drag = braking ? 2.8 : 1.2;
 
         if (Math.abs(speedDiff) > 0.1) {
@@ -602,6 +604,21 @@ class M1AbramsGame {
         }
     }
     
+    getClosestEnemyDistance() {
+        const tank = this.playerTank;
+        let closest = Infinity;
+
+        this.enemies.forEach((enemy) => {
+            if (enemy.isDestroyed) return;
+            const dx = enemy.position.x - tank.position.x;
+            const dy = enemy.position.y - tank.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < closest) closest = distance;
+        });
+
+        return Number.isFinite(closest) ? Math.round(closest) : null;
+    }
+
     attemptFlagCapture() {
         const tank = this.playerTank;
         
@@ -1424,6 +1441,21 @@ class M1AbramsGame {
 
         const turretHud = document.getElementById('turretValue');
         if (turretHud) turretHud.textContent = `${tank.traverseSpeed}°/s`;
+
+        const closestEnemyValue = document.getElementById('closestEnemyValue');
+        const nearbyTargetsValue = document.getElementById('nearbyTargetsValue');
+        const captureStatusValue = document.getElementById('captureStatusValue');
+
+        if (closestEnemyValue) {
+            const closest = this.getClosestEnemyDistance();
+            closestEnemyValue.textContent = closest !== null ? `${closest} m` : 'CLEAR';
+        }
+        if (nearbyTargetsValue) nearbyTargetsValue.textContent = String(this.enemiesInProximity);
+        if (captureStatusValue) {
+            const activeCapture = this.flags.find((f) => !f.captured && f.capturing);
+            captureStatusValue.textContent = activeCapture ? 'CAPTURING' : 'SECURE';
+            captureStatusValue.style.color = activeCapture ? '#ffd166' : '#72ff9d';
+        }
         
         // Update bars
         document.getElementById('healthBar').style.width = `${tank.health}%`;
@@ -1723,6 +1755,9 @@ class M1AbramsGame {
         hullGradient.addColorStop(1, '#7e5f13');
         ctx.fillStyle = hullGradient;
         ctx.fillRect(-36, -24, 72, 48);
+        ctx.strokeStyle = 'rgba(255,255,255,0.42)';
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(-36, -24, 72, 48);
 
         // Front glacis
         ctx.fillStyle = '#9f7419';
@@ -1751,6 +1786,9 @@ class M1AbramsGame {
         ctx.beginPath();
         ctx.ellipse(0, 0, 28, 24, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
 
         // Turret cheek armor
         ctx.fillStyle = '#8e6918';
@@ -1832,6 +1870,9 @@ class M1AbramsGame {
         // Draw hull
         ctx.fillStyle = hullColor;
         ctx.fillRect(-30, -18, 60, 36);
+        ctx.strokeStyle = '#ff6b6b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-30, -18, 60, 36);
         
         // Details
         ctx.fillStyle = detailColor;
@@ -1848,17 +1889,30 @@ class M1AbramsGame {
         
         ctx.fillStyle = detailColor;
         ctx.fillRect(0, -7, 35, 14);
+        ctx.strokeStyle = '#ff8f8f';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(0, -7, 35, 14);
         
         ctx.restore();
         
         ctx.restore();
         
         // Draw enemy name and health
-        ctx.fillStyle = enemy.spotted ? 'white' : 'rgba(255,255,255,0.5)';
+        enemy.spotted = true;
+        ctx.fillStyle = '#ffe8e8';
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(enemy.type.name, enemy.position.x, enemy.position.y - 45);
         
+        // Marker icon
+        ctx.fillStyle = '#ff2d2d';
+        ctx.beginPath();
+        ctx.moveTo(enemy.position.x, enemy.position.y - 64);
+        ctx.lineTo(enemy.position.x - 7, enemy.position.y - 76);
+        ctx.lineTo(enemy.position.x + 7, enemy.position.y - 76);
+        ctx.closePath();
+        ctx.fill();
+
         // Health bar
         const healthPercent = enemy.health / 100;
         const barWidth = 60;

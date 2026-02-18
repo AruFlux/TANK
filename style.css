@@ -586,4 +586,47 @@ body {
         right: 14px;
         bottom: 14px;
     }
+
+    .tactical-panel {
+        top: 300px;
+        right: 14px;
+        width: 206px;
+    }
+}
+
+
+.tactical-panel {
+    position: absolute;
+    top: 340px;
+    right: 20px;
+    width: 220px;
+    background: linear-gradient(170deg, rgba(4, 26, 46, 0.9), rgba(2, 12, 24, 0.92));
+    border: 2px solid #00d4ff;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 0 18px rgba(0, 183, 255, 0.25), inset 0 0 18px rgba(0, 90, 150, 0.2);
+    backdrop-filter: blur(6px);
+}
+
+.tactical-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #9ce7ff;
+    margin-bottom: 8px;
+}
+
+.tactical-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(105, 178, 210, 0.2);
+    color: #cdeeff;
+}
+
+.tactical-row span:last-child {
+    font-weight: 700;
+    color: #ffffff;
 }
