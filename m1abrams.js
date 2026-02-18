@@ -36,9 +36,11 @@ class M1AbramsGame {
             
             // Mobility
             enginePower: 1500, // hp (AGT1500 gas turbine)
-            maxSpeed: 72, // km/h
-            reverseSpeed: 42,
-            turnRate: 45, // degrees per second
+            maxSpeed: 86, // km/h
+            reverseSpeed: 52,
+            turnRate: 62, // degrees per second
+            traverseSpeed: 160, // turret traverse deg/s
+            elevationSpeed: 22, // gun elevation deg/s
             fuelCapacity: 1907, // liters
             currentFuel: 1907,
             fuelConsumption: 3.8, // liters per minute at idle
@@ -129,6 +131,7 @@ class M1AbramsGame {
         // Input
         this.keys = {};
         this.mouse = { x: 0, y: 0, down: false };
+        this.activeMovement = { throttle: 0, steering: 0, braking: false };
         
         // Terrain (larger map for 2000m zoom-out)
         this.terrain = {
@@ -239,7 +242,7 @@ class M1AbramsGame {
                 targetPosition: null,
                 lastShot: 0,
                 shells: 40,
-                spotted: false,
+                spotted: true,
                 lastKnownPosition: null,
                 isDestroyed: false
             });
@@ -323,6 +326,14 @@ class M1AbramsGame {
         }
     }
     
+    isKeyPressed(...keys) {
+        return keys.some((key) => this.keys[key]);
+    }
+
+    updateControlReadout(throttle, steering, braking) {
+        this.activeMovement = { throttle, steering, braking };
+    }
+
     setupInput() {
         // Keyboard
         window.addEventListener('keydown', (e) => {
@@ -453,46 +464,62 @@ class M1AbramsGame {
     
     updateTank(deltaTime) {
         const tank = this.playerTank;
-        
+
         // Calculate input forces
         let throttle = 0;
         let steering = 0;
-        
-        if (this.keys['w'] || this.keys['arrowup']) throttle = 1;
-        if (this.keys['s'] || this.keys['arrowdown']) throttle = -0.7; // Reverse speed
-        if (this.keys['a'] || this.keys['arrowleft']) steering = -1;
-        if (this.keys['d'] || this.keys['arrowright']) steering = 1;
-        if (this.keys[' ']) throttle = 0; // Brake
-        
+
+        const forwardPressed = this.isKeyPressed('w', 'arrowup');
+        const backwardPressed = this.isKeyPressed('s', 'arrowdown');
+        const leftPressed = this.isKeyPressed('a', 'arrowleft');
+        const rightPressed = this.isKeyPressed('d', 'arrowright');
+        const braking = this.isKeyPressed(' ');
+
+        if (forwardPressed && !backwardPressed) throttle = 1;
+        if (backwardPressed && !forwardPressed) throttle = -0.7; // Reverse speed
+        if (leftPressed && !rightPressed) steering = -1;
+        if (rightPressed && !leftPressed) steering = 1;
+        if (braking) throttle = 0;
+
         // M1 Abrams has excellent acceleration
         const maxSpeed = throttle > 0 ? tank.maxSpeed : tank.reverseSpeed;
         const targetSpeed = throttle * maxSpeed;
-        
+
         // Powerful gas turbine engine
         const acceleration = (tank.enginePower * 735.5) / tank.mass;
         const speedDiff = targetSpeed - tank.speed;
-        
+        const drag = braking ? 3.2 : 1.1;
+        const lowFuelPenalty = tank.currentFuel < tank.fuelCapacity * 0.15 ? 0.82 : 1;
+
         if (Math.abs(speedDiff) > 0.1) {
-            tank.speed += Math.sign(speedDiff) * acceleration * deltaTime * 1.5;
-            tank.speed = Math.max(-tank.reverseSpeed, Math.min(tank.maxSpeed, tank.speed));
+            tank.speed += Math.sign(speedDiff) * acceleration * deltaTime * 2.35 * lowFuelPenalty;
+        } else {
+            tank.speed *= Math.max(0, 1 - drag * deltaTime);
         }
-        
+
+        if (!forwardPressed && !backwardPressed && !braking) {
+            tank.speed *= Math.max(0, 1 - 1.0 * deltaTime);
+        }
+
+        tank.speed = Math.max(-tank.reverseSpeed, Math.min(tank.maxSpeed, tank.speed));
+
         // Convert km/h to m/s and apply to position
         const speedMs = tank.speed * (1000 / 3600);
         const moveDistance = speedMs * deltaTime;
-        
+
         // Apply rotation (M1 has good turning)
         const turnRate = tank.turnRate * (Math.PI / 180);
-        tank.rotation += steering * turnRate * deltaTime * (1 - Math.abs(speedMs) / 25);
-        
+        const turnScale = 1 - Math.min(Math.abs(speedMs) / 30, 0.78);
+        tank.rotation += steering * turnRate * deltaTime * turnScale;
+
         // Calculate new position
         const moveX = Math.cos(tank.rotation) * moveDistance;
         const moveY = Math.sin(tank.rotation) * moveDistance;
-        
+
         // Check terrain collisions
         const newX = tank.position.x + moveX;
         const newY = tank.position.y + moveY;
-        
+
         if (this.canMoveTo(newX, newY)) {
             tank.position.x = newX;
             tank.position.y = newY;
@@ -500,34 +527,36 @@ class M1AbramsGame {
             // Collision - slow down
             tank.speed *= 0.5;
         }
-        
+
+        this.updateControlReadout(throttle, steering, braking);
+
         // Update turret rotation (M1 has fast turret traverse)
         const targetAngle = this.getMouseAngle();
         const angleDiff = targetAngle - tank.turretRotation;
         const normalizedDiff = ((angleDiff + Math.PI) % (Math.PI * 2)) - Math.PI;
-        const turretSpeed = 3.5 * (Math.PI / 180); // 3.5 degrees per second (fast)
-        
+        const turretSpeed = tank.traverseSpeed * (Math.PI / 180);
+
         if (Math.abs(normalizedDiff) > 0.01) {
-            tank.turretRotation += Math.sign(normalizedDiff) * 
+            tank.turretRotation += Math.sign(normalizedDiff) *
                 Math.min(Math.abs(normalizedDiff), turretSpeed * deltaTime);
         }
-        
+
         // Update gun elevation (M1 has -10 to +20 degrees)
         const targetElevation = this.getMouseElevation();
         const elevationDiff = targetElevation - tank.gunElevation;
-        const elevationSpeed = 4.0 * (Math.PI / 180); // Fast elevation
-        
+        const elevationSpeed = tank.elevationSpeed * (Math.PI / 180);
+
         if (Math.abs(elevationDiff) > 0.01) {
-            tank.gunElevation += Math.sign(elevationDiff) * 
+            tank.gunElevation += Math.sign(elevationDiff) *
                 Math.min(Math.abs(elevationDiff), elevationSpeed * deltaTime);
         }
-        
+
         // Limit gun elevation
         const maxElevation = 20 * (Math.PI / 180);
         const minElevation = -10 * (Math.PI / 180);
         tank.gunElevation = Math.max(minElevation, Math.min(maxElevation, tank.gunElevation));
     }
-    
+
     checkProximity() {
         const tank = this.playerTank;
         let enemiesNearby = 0;
@@ -566,6 +595,21 @@ class M1AbramsGame {
         }
     }
     
+    getClosestEnemyDistance() {
+        const tank = this.playerTank;
+        let closest = Infinity;
+
+        this.enemies.forEach((enemy) => {
+            if (enemy.isDestroyed) return;
+            const dx = enemy.position.x - tank.position.x;
+            const dy = enemy.position.y - tank.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < closest) closest = distance;
+        });
+
+        return Number.isFinite(closest) ? Math.round(closest) : null;
+    }
+
     attemptFlagCapture() {
         const tank = this.playerTank;
         
@@ -1371,6 +1415,38 @@ class M1AbramsGame {
         document.getElementById('crewStatus').textContent = `${tank.crew.filter(m => m.health > 0).length}/4`;
         document.getElementById('healthValue').textContent = Math.round(tank.health) + '%';
         document.getElementById('fuelValue').textContent = Math.round((tank.currentFuel / tank.fuelCapacity) * 100) + '%';
+
+        const controlsTitle = document.querySelector('.controls-title');
+        if (controlsTitle) {
+            const movement = this.activeMovement.throttle > 0 ? 'FORWARD' :
+                this.activeMovement.throttle < 0 ? 'REVERSE' :
+                this.activeMovement.braking ? 'BRAKE' : 'IDLE';
+            controlsTitle.textContent = `CONTROLS • ${movement}`;
+        }
+
+        const speedHud = document.getElementById('speedValue');
+        if (speedHud) speedHud.textContent = `${Math.abs(tank.speed).toFixed(1)} km/h`;
+
+        const hullHud = document.getElementById('hullValue');
+        if (hullHud) hullHud.textContent = `${tank.maxSpeed} / ${tank.reverseSpeed} km/h`;
+
+        const turretHud = document.getElementById('turretValue');
+        if (turretHud) turretHud.textContent = `${tank.traverseSpeed}°/s`;
+
+        const closestEnemyValue = document.getElementById('closestEnemyValue');
+        const nearbyTargetsValue = document.getElementById('nearbyTargetsValue');
+        const captureStatusValue = document.getElementById('captureStatusValue');
+
+        if (closestEnemyValue) {
+            const closest = this.getClosestEnemyDistance();
+            closestEnemyValue.textContent = closest !== null ? `${closest} m` : 'CLEAR';
+        }
+        if (nearbyTargetsValue) nearbyTargetsValue.textContent = String(this.enemiesInProximity);
+        if (captureStatusValue) {
+            const activeCapture = this.flags.find((f) => !f.captured && f.capturing);
+            captureStatusValue.textContent = activeCapture ? 'CAPTURING' : 'SECURE';
+            captureStatusValue.style.color = activeCapture ? '#ffd166' : '#72ff9d';
+        }
         
         // Update bars
         document.getElementById('healthBar').style.width = `${tank.health}%`;
@@ -1629,84 +1705,143 @@ class M1AbramsGame {
     drawPlayerTank() {
         const tank = this.playerTank;
         const ctx = this.ctx;
-        
+
         ctx.save();
         ctx.translate(tank.position.x, tank.position.y);
         ctx.rotate(tank.rotation);
-        
-        // M1 Abrams hull (desert tan)
-        ctx.fillStyle = '#b8860b';
-        ctx.fillRect(-35, -25, 70, 50);
-        
-        // Hull details
-        ctx.fillStyle = '#8b6914';
-        ctx.fillRect(-30, -20, 60, 40);
-        
-        // Sloped armor
-        ctx.fillStyle = '#a0522d';
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
         ctx.beginPath();
-        ctx.moveTo(-35, -25);
-        ctx.lineTo(-20, -40);
-        ctx.lineTo(20, -40);
-        ctx.lineTo(35, -25);
+        ctx.ellipse(0, 18, 50, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Track bed
+        const trackGradient = ctx.createLinearGradient(-44, 0, 44, 0);
+        trackGradient.addColorStop(0, '#2b2f35');
+        trackGradient.addColorStop(0.5, '#4f555e');
+        trackGradient.addColorStop(1, '#2b2f35');
+        ctx.fillStyle = trackGradient;
+        ctx.fillRect(-44, -30, 88, 12);
+        ctx.fillRect(-44, 18, 88, 12);
+
+        // Road wheels
+        for (let i = -30; i <= 30; i += 15) {
+            ctx.fillStyle = '#1f2328';
+            ctx.beginPath();
+            ctx.arc(i, -24, 4, 0, Math.PI * 2);
+            ctx.arc(i, 24, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#6b7078';
+            ctx.beginPath();
+            ctx.arc(i, -24, 2, 0, Math.PI * 2);
+            ctx.arc(i, 24, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Hull
+        const hullGradient = ctx.createLinearGradient(-36, -26, 36, 26);
+        hullGradient.addColorStop(0, '#d0a33a');
+        hullGradient.addColorStop(0.55, '#b8871e');
+        hullGradient.addColorStop(1, '#7e5f13');
+        ctx.fillStyle = hullGradient;
+        ctx.fillRect(-36, -24, 72, 48);
+        ctx.strokeStyle = 'rgba(255,255,255,0.42)';
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(-36, -24, 72, 48);
+
+        // Front glacis
+        ctx.fillStyle = '#9f7419';
+        ctx.beginPath();
+        ctx.moveTo(-36, -24);
+        ctx.lineTo(-18, -39);
+        ctx.lineTo(20, -39);
+        ctx.lineTo(36, -24);
         ctx.closePath();
         ctx.fill();
-        
-        // Tracks
-        ctx.fillStyle = '#2f4f4f';
-        ctx.fillRect(-40, -30, 80, 10); // Top track
-        ctx.fillRect(-40, 20, 80, 10);  // Bottom track
-        
-        // Draw turret (rotates separately)
+
+        // Side armor accents
+        ctx.strokeStyle = 'rgba(255, 230, 160, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-31, -18, 62, 36);
+
+        // Turret
         ctx.save();
         ctx.rotate(tank.turretRotation - tank.rotation);
-        
-        // M1 Abrams distinctive turret
-        ctx.fillStyle = '#b8860b';
+
+        const turretGradient = ctx.createRadialGradient(0, -2, 6, 0, 0, 30);
+        turretGradient.addColorStop(0, '#e3b74b');
+        turretGradient.addColorStop(0.6, '#b88822');
+        turretGradient.addColorStop(1, '#795a17');
+        ctx.fillStyle = turretGradient;
         ctx.beginPath();
-        ctx.arc(0, 0, 25, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, 28, 24, 0, 0, Math.PI * 2);
         ctx.fill();
-        
-        // Gun mantlet
-        ctx.fillStyle = '#696969';
-        ctx.fillRect(0, -10, 50, 20);
-        
-        // Gun barrel (with elevation)
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // Turret cheek armor
+        ctx.fillStyle = '#8e6918';
+        ctx.fillRect(-10, -10, 20, 20);
+
+        // Mantlet
+        ctx.fillStyle = '#5f6164';
+        ctx.fillRect(6, -9, 24, 18);
+
+        // Main gun
         ctx.save();
         ctx.rotate(tank.gunElevation);
-        ctx.fillStyle = '#1c1c1c';
-        ctx.fillRect(50, -6, 60, 12);
+        const barrelGradient = ctx.createLinearGradient(20, 0, 120, 0);
+        barrelGradient.addColorStop(0, '#4b4d51');
+        barrelGradient.addColorStop(0.5, '#25272b');
+        barrelGradient.addColorStop(1, '#0f1114');
+        ctx.fillStyle = barrelGradient;
+        ctx.fillRect(20, -4.6, 94, 9.2);
+
+        // Thermal sleeve + muzzle ring
+        ctx.fillStyle = '#2e3238';
+        ctx.fillRect(66, -5.6, 14, 11.2);
+        ctx.fillStyle = '#696d72';
+        ctx.fillRect(111, -5.8, 4, 11.6);
         ctx.restore();
-        
-        // Commander's independent sight
-        ctx.fillStyle = '#2f4f4f';
+
+        // Optics + cupola
+        ctx.fillStyle = '#21353a';
         ctx.beginPath();
-        ctx.arc(0, -15, 8, 0, Math.PI * 2);
+        ctx.arc(-2, -16, 8, 0, Math.PI * 2);
         ctx.fill();
-        
-        ctx.restore(); // Turret rotation
-        
-        ctx.restore(); // Tank position/rotation
-        
-        // Draw tank name
-        ctx.fillStyle = 'white';
-        ctx.font = '14px Arial';
+        ctx.fillStyle = '#67d9d5';
+        ctx.fillRect(-5, -18, 6, 3);
+
+        // Reactive panel detailing
+        ctx.fillStyle = 'rgba(30, 40, 48, 0.4)';
+        ctx.fillRect(-18, 9, 36, 6);
+
+        ctx.restore(); // Turret
+        ctx.restore(); // Tank
+
+        // Name + current speed readout
+        ctx.fillStyle = '#f2f7ff';
+        ctx.font = '600 13px Segoe UI';
         ctx.textAlign = 'center';
-        ctx.fillText('M1 ABRAMS', tank.position.x, tank.position.y - 60);
-        
-        // Draw health bar above tank
-        const barWidth = 80;
+        ctx.fillText(`M1 ABRAMS • ${Math.abs(tank.speed).toFixed(0)} km/h`, tank.position.x, tank.position.y - 62);
+
+        // Health bar
+        const barWidth = 96;
         const barHeight = 8;
         const healthPercent = tank.health / 100;
-        
-        ctx.fillStyle = '#333';
-        ctx.fillRect(tank.position.x - barWidth/2, tank.position.y - 70, barWidth, barHeight);
-        
-        ctx.fillStyle = healthPercent > 0.5 ? '#2ecc71' : 
+
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(tank.position.x - barWidth / 2, tank.position.y - 74, barWidth, barHeight);
+
+        ctx.fillStyle = healthPercent > 0.5 ? '#2ecc71' :
                        healthPercent > 0.25 ? '#f39c12' : '#e74c3c';
-        ctx.fillRect(tank.position.x - barWidth/2, tank.position.y - 70, barWidth * healthPercent, barHeight);
+        ctx.fillRect(tank.position.x - barWidth / 2, tank.position.y - 74, barWidth * healthPercent, barHeight);
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.strokeRect(tank.position.x - barWidth / 2, tank.position.y - 74, barWidth, barHeight);
     }
-    
+
     drawEnemyTank(enemy) {
         const ctx = this.ctx;
         
@@ -1726,6 +1861,9 @@ class M1AbramsGame {
         // Draw hull
         ctx.fillStyle = hullColor;
         ctx.fillRect(-30, -18, 60, 36);
+        ctx.strokeStyle = '#ff6b6b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-30, -18, 60, 36);
         
         // Details
         ctx.fillStyle = detailColor;
@@ -1742,17 +1880,30 @@ class M1AbramsGame {
         
         ctx.fillStyle = detailColor;
         ctx.fillRect(0, -7, 35, 14);
+        ctx.strokeStyle = '#ff8f8f';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(0, -7, 35, 14);
         
         ctx.restore();
         
         ctx.restore();
         
         // Draw enemy name and health
-        ctx.fillStyle = enemy.spotted ? 'white' : 'rgba(255,255,255,0.5)';
+        enemy.spotted = true;
+        ctx.fillStyle = '#ffe8e8';
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(enemy.type.name, enemy.position.x, enemy.position.y - 45);
         
+        // Marker icon
+        ctx.fillStyle = '#ff2d2d';
+        ctx.beginPath();
+        ctx.moveTo(enemy.position.x, enemy.position.y - 64);
+        ctx.lineTo(enemy.position.x - 7, enemy.position.y - 76);
+        ctx.lineTo(enemy.position.x + 7, enemy.position.y - 76);
+        ctx.closePath();
+        ctx.fill();
+
         // Health bar
         const healthPercent = enemy.health / 100;
         const barWidth = 60;
