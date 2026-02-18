@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARMORED WARFARE - Realistic Tank Combat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Main Game Container -->
+    <div class="game-container">
+        <!-- HUD Overlay - Military Tactical Style -->
+        <div class="hud-overlay">
+            <!-- Top Bar - Tactical Information -->
+            <div class="top-bar">
+                <div class="tactical-info">
+                    <div class="mission-timer">00:00</div>
+                    <div class="threat-level">THREAT LEVEL: <span class="threat-value">MODERATE</span></div>
+                </div>
+                <div class="resources">
+                    <div class="resource"><span class="icon">⚡</span> <span id="fuelReserve">100%</span></div>
+                    <div class="resource"><span class="icon">🔧</span> <span id="repairKit">3</span></div>
+                    <div class="resource"><span class="icon">🧯</span> <span id="extinguisher">2</span></div>
+                </div>
+            </div>
+
+            <!-- Left Panel - Vehicle Status -->
+            <div class="left-panel">
+                <div class="vehicle-panel">
+                    <div class="vehicle-title">M1A2 ABRAMS</div>
+                    <div class="vehicle-status">
+                        <div class="status-row">
+                            <span>HULL INTEGRITY</span>
+                            <div class="progress-bar"><div class="progress-fill" id="hullHealth" style="width:100%"></div></div>
+                            <span id="hullPercent">100%</span>
+                        </div>
+                        <div class="status-row">
+                            <span>TURRET</span>
+                            <div class="progress-bar"><div class="progress-fill" id="turretHealth" style="width:100%"></div></div>
+                            <span id="turretPercent">100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Crew Status -->
+                <div class="crew-panel">
+                    <div class="crew-title">CREW STATUS</div>
+                    <div class="crew-grid">
+                        <div class="crew-member" id="crew-commander">
+                            <span class="crew-icon">👑</span>
+                            <span class="crew-name">CDR</span>
+                            <span class="crew-status active">●</span>
+                        </div>
+                        <div class="crew-member" id="crew-gunner">
+                            <span class="crew-icon">🎯</span>
+                            <span class="crew-name">GNR</span>
+                            <span class="crew-status active">●</span>
+                        </div>
+                        <div class="crew-member" id="crew-loader">
+                            <span class="crew-icon">📦</span>
+                            <span class="crew-name">LDR</span>
+                            <span class="crew-status active">●</span>
+                        </div>
+                        <div class="crew-member" id="crew-driver">
+                            <span class="crew-icon">⚙️</span>
+                            <span class="crew-name">DRV</span>
+                            <span class="crew-status active">●</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Module Status -->
+                <div class="modules-panel">
+                    <div class="module-item" id="module-engine">
+                        <span>ENGINE</span>
+                        <span class="module-status operational">●</span>
+                    </div>
+                    <div class="module-item" id="module-ammo">
+                        <span>AMMO RACK</span>
+                        <span class="module-status operational">●</span>
+                    </div>
+                    <div class="module-item" id="module-tracks">
+                        <span>TRACKS</span>
+                        <span class="module-status operational">●</span>
+                    </div>
+                    <div class="module-item" id="module-radio">
+                        <span>RADIO</span>
+                        <span class="module-status operational">●</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Combat Information -->
+            <div class="right-panel">
+                <!-- Minimap -->
+                <div class="minimap-container">
+                    <div class="minimap-title">TACTICAL MAP</div>
+                    <canvas id="minimapCanvas" width="200" height="200"></canvas>
+                </div>
+
+                <!-- Enemy Intel -->
+                <div class="enemy-intel">
+                    <div class="intel-title">TARGET ANALYSIS</div>
+                    <div class="intel-row">
+                        <span>THREAT:</span>
+                        <span id="targetThreat">T-90M</span>
+                    </div>
+                    <div class="intel-row">
+                        <span>DISTANCE:</span>
+                        <span id="targetDistance">--m</span>
+                    </div>
+                    <div class="intel-row">
+                        <span>ARMOR:</span>
+                        <span id="targetArmor">650mm</span>
+                    </div>
+                    <div class="intel-row">
+                        <span>WEAK SPOT:</span>
+                        <span id="targetWeakspot">LFP</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Center - Ammo & Fire Control -->
+            <div class="fire-control">
+                <!-- Ammo Selector -->
+                <div class="ammo-selector">
+                    <div class="ammo-slot active" data-type="apfsds">
+                        <div class="ammo-icon">→</div>
+                        <div class="ammo-info">
+                            <span class="ammo-name">APFSDS</span>
+                            <span class="ammo-stats">540mm | 1650m/s</span>
+                        </div>
+                        <div class="ammo-count" id="ammo-apfsds">42</div>
+                    </div>
+                    <div class="ammo-slot" data-type="heat">
+                        <div class="ammo-icon">💥</div>
+                        <div class="ammo-info">
+                            <span class="ammo-name">HEAT-FS</span>
+                            <span class="ammo-stats">480mm | 950m/s</span>
+                        </div>
+                        <div class="ammo-count" id="ammo-heat">30</div>
+                    </div>
+                    <div class="ammo-slot" data-type="he">
+                        <div class="ammo-icon">⚡</div>
+                        <div class="ammo-info">
+                            <span class="ammo-name">HESH</span>
+                            <span class="ammo-stats">127mm | 750m/s</span>
+                        </div>
+                        <div class="ammo-count" id="ammo-he">20</div>
+                    </div>
+                </div>
+
+                <!-- Reload Indicator -->
+                <div class="reload-indicator">
+                    <div class="reload-bar-container">
+                        <div class="reload-progress" id="reloadProgress" style="width:0%"></div>
+                    </div>
+                    <div class="reload-time" id="reloadTime">6.5s</div>
+                </div>
+
+                <!-- MG Status -->
+                <div class="mg-status">
+                    <div class="mg-icon">🔫</div>
+                    <div class="mg-bar">
+                        <div class="mg-heat" id="mgHeat" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Damage Feed -->
+            <div class="damage-feed" id="damageFeed"></div>
+
+            <!-- Hit Indicator -->
+            <div class="hit-indicator" id="hitIndicator">
+                <div class="hit-arrow" id="hitArrow"></div>
+                <div class="hit-message" id="hitMessage"></div>
+            </div>
+
+            <!-- Controls Overlay -->
+            <div class="controls-hint">
+                <div class="hint-item">WASD - MOVE</div>
+                <div class="hint-item">MOUSE - AIM</div>
+                <div class="hint-item">LMB - FIRE</div>
+                <div class="hint-item">R - REPAIR</div>
+                <div class="hint-item">F - EXTINGUISH</div>
+            </div>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Game Scripts -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
