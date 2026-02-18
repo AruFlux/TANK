@@ -4,6 +4,8 @@ A lightweight canvas tank-combat prototype with a modern HUD, AI enemies/allies,
 
 ## Features
 - Player-driven M1 Abrams with acceleration, braking, forward/reverse movement, and steering.
+- Enhanced M1 visual model (better hull/turret shading, barrel detail, and track/wheel styling).
+- Faster, more responsive hull mobility and turret traverse/elevation tuning for tighter combat feel.
 - Turret aiming with mouse tracking and shell selection (APFSDS / HEAT / SMOKE).
 - Enemy and ally AI units on a large battlefield.
 - Flag capture objective (3 capture points).
