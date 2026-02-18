@@ -522,3 +522,38 @@ body {
     min-width: 40px;
     text-align: center;
 }
+
+
+.controls-help {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    width: 280px;
+    background: rgba(8, 14, 20, 0.88);
+    border: 2px solid rgba(0, 170, 255, 0.8);
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 0 14px rgba(0, 170, 255, 0.25);
+    pointer-events: none;
+}
+
+.controls-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8fd7ff;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+    font-size: 12px;
+    color: #d7ecff;
+}
+
+.controls-grid span:nth-child(2n) {
+    color: #ffffff;
+    font-weight: 600;
+}

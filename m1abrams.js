@@ -129,6 +129,7 @@ class M1AbramsGame {
         // Input
         this.keys = {};
         this.mouse = { x: 0, y: 0, down: false };
+        this.activeMovement = { throttle: 0, steering: 0, braking: false };
         
         // Terrain (larger map for 2000m zoom-out)
         this.terrain = {
@@ -323,6 +324,14 @@ class M1AbramsGame {
         }
     }
     
+    isKeyPressed(...keys) {
+        return keys.some((key) => this.keys[key]);
+    }
+
+    updateControlReadout(throttle, steering, braking) {
+        this.activeMovement = { throttle, steering, braking };
+    }
+
     setupInput() {
         // Keyboard
         window.addEventListener('keydown', (e) => {
@@ -453,46 +462,61 @@ class M1AbramsGame {
     
     updateTank(deltaTime) {
         const tank = this.playerTank;
-        
+
         // Calculate input forces
         let throttle = 0;
         let steering = 0;
-        
-        if (this.keys['w'] || this.keys['arrowup']) throttle = 1;
-        if (this.keys['s'] || this.keys['arrowdown']) throttle = -0.7; // Reverse speed
-        if (this.keys['a'] || this.keys['arrowleft']) steering = -1;
-        if (this.keys['d'] || this.keys['arrowright']) steering = 1;
-        if (this.keys[' ']) throttle = 0; // Brake
-        
+
+        const forwardPressed = this.isKeyPressed('w', 'arrowup');
+        const backwardPressed = this.isKeyPressed('s', 'arrowdown');
+        const leftPressed = this.isKeyPressed('a', 'arrowleft');
+        const rightPressed = this.isKeyPressed('d', 'arrowright');
+        const braking = this.isKeyPressed(' ');
+
+        if (forwardPressed && !backwardPressed) throttle = 1;
+        if (backwardPressed && !forwardPressed) throttle = -0.7; // Reverse speed
+        if (leftPressed && !rightPressed) steering = -1;
+        if (rightPressed && !leftPressed) steering = 1;
+        if (braking) throttle = 0;
+
         // M1 Abrams has excellent acceleration
         const maxSpeed = throttle > 0 ? tank.maxSpeed : tank.reverseSpeed;
         const targetSpeed = throttle * maxSpeed;
-        
+
         // Powerful gas turbine engine
         const acceleration = (tank.enginePower * 735.5) / tank.mass;
         const speedDiff = targetSpeed - tank.speed;
-        
+        const drag = braking ? 2.8 : 1.2;
+
         if (Math.abs(speedDiff) > 0.1) {
             tank.speed += Math.sign(speedDiff) * acceleration * deltaTime * 1.5;
-            tank.speed = Math.max(-tank.reverseSpeed, Math.min(tank.maxSpeed, tank.speed));
+        } else {
+            tank.speed *= Math.max(0, 1 - drag * deltaTime);
         }
-        
+
+        if (!forwardPressed && !backwardPressed && !braking) {
+            tank.speed *= Math.max(0, 1 - 1.0 * deltaTime);
+        }
+
+        tank.speed = Math.max(-tank.reverseSpeed, Math.min(tank.maxSpeed, tank.speed));
+
         // Convert km/h to m/s and apply to position
         const speedMs = tank.speed * (1000 / 3600);
         const moveDistance = speedMs * deltaTime;
-        
+
         // Apply rotation (M1 has good turning)
         const turnRate = tank.turnRate * (Math.PI / 180);
-        tank.rotation += steering * turnRate * deltaTime * (1 - Math.abs(speedMs) / 25);
-        
+        const turnScale = 1 - Math.min(Math.abs(speedMs) / 25, 0.9);
+        tank.rotation += steering * turnRate * deltaTime * turnScale;
+
         // Calculate new position
         const moveX = Math.cos(tank.rotation) * moveDistance;
         const moveY = Math.sin(tank.rotation) * moveDistance;
-        
+
         // Check terrain collisions
         const newX = tank.position.x + moveX;
         const newY = tank.position.y + moveY;
-        
+
         if (this.canMoveTo(newX, newY)) {
             tank.position.x = newX;
             tank.position.y = newY;
@@ -500,34 +524,36 @@ class M1AbramsGame {
             // Collision - slow down
             tank.speed *= 0.5;
         }
-        
+
+        this.updateControlReadout(throttle, steering, braking);
+
         // Update turret rotation (M1 has fast turret traverse)
         const targetAngle = this.getMouseAngle();
         const angleDiff = targetAngle - tank.turretRotation;
         const normalizedDiff = ((angleDiff + Math.PI) % (Math.PI * 2)) - Math.PI;
         const turretSpeed = 3.5 * (Math.PI / 180); // 3.5 degrees per second (fast)
-        
+
         if (Math.abs(normalizedDiff) > 0.01) {
-            tank.turretRotation += Math.sign(normalizedDiff) * 
+            tank.turretRotation += Math.sign(normalizedDiff) *
                 Math.min(Math.abs(normalizedDiff), turretSpeed * deltaTime);
         }
-        
+
         // Update gun elevation (M1 has -10 to +20 degrees)
         const targetElevation = this.getMouseElevation();
         const elevationDiff = targetElevation - tank.gunElevation;
         const elevationSpeed = 4.0 * (Math.PI / 180); // Fast elevation
-        
+
         if (Math.abs(elevationDiff) > 0.01) {
-            tank.gunElevation += Math.sign(elevationDiff) * 
+            tank.gunElevation += Math.sign(elevationDiff) *
                 Math.min(Math.abs(elevationDiff), elevationSpeed * deltaTime);
         }
-        
+
         // Limit gun elevation
         const maxElevation = 20 * (Math.PI / 180);
         const minElevation = -10 * (Math.PI / 180);
         tank.gunElevation = Math.max(minElevation, Math.min(maxElevation, tank.gunElevation));
     }
-    
+
     checkProximity() {
         const tank = this.playerTank;
         let enemiesNearby = 0;
@@ -1371,6 +1397,14 @@ class M1AbramsGame {
         document.getElementById('crewStatus').textContent = `${tank.crew.filter(m => m.health > 0).length}/4`;
         document.getElementById('healthValue').textContent = Math.round(tank.health) + '%';
         document.getElementById('fuelValue').textContent = Math.round((tank.currentFuel / tank.fuelCapacity) * 100) + '%';
+
+        const controlsTitle = document.querySelector('.controls-title');
+        if (controlsTitle) {
+            const movement = this.activeMovement.throttle > 0 ? 'FORWARD' :
+                this.activeMovement.throttle < 0 ? 'REVERSE' :
+                this.activeMovement.braking ? 'BRAKE' : 'IDLE';
+            controlsTitle.textContent = `CONTROLS • ${movement}`;
+        }
         
         // Update bars
         document.getElementById('healthBar').style.width = `${tank.health}%`;
