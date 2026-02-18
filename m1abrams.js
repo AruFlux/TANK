@@ -493,6 +493,10 @@ class M1AbramsGame {
 
         if (Math.abs(speedDiff) > 0.1) {
             tank.speed += Math.sign(speedDiff) * acceleration * deltaTime * 2.35 * lowFuelPenalty;
+        const drag = braking ? 2.8 : 1.2;
+
+        if (Math.abs(speedDiff) > 0.1) {
+            tank.speed += Math.sign(speedDiff) * acceleration * deltaTime * 1.5;
         } else {
             tank.speed *= Math.max(0, 1 - drag * deltaTime);
         }
@@ -510,6 +514,7 @@ class M1AbramsGame {
         // Apply rotation (M1 has good turning)
         const turnRate = tank.turnRate * (Math.PI / 180);
         const turnScale = 1 - Math.min(Math.abs(speedMs) / 30, 0.78);
+        const turnScale = 1 - Math.min(Math.abs(speedMs) / 25, 0.9);
         tank.rotation += steering * turnRate * deltaTime * turnScale;
 
         // Calculate new position
@@ -535,6 +540,7 @@ class M1AbramsGame {
         const angleDiff = targetAngle - tank.turretRotation;
         const normalizedDiff = ((angleDiff + Math.PI) % (Math.PI * 2)) - Math.PI;
         const turretSpeed = tank.traverseSpeed * (Math.PI / 180);
+        const turretSpeed = 3.5 * (Math.PI / 180); // 3.5 degrees per second (fast)
 
         if (Math.abs(normalizedDiff) > 0.01) {
             tank.turretRotation += Math.sign(normalizedDiff) *
@@ -545,6 +551,7 @@ class M1AbramsGame {
         const targetElevation = this.getMouseElevation();
         const elevationDiff = targetElevation - tank.gunElevation;
         const elevationSpeed = tank.elevationSpeed * (Math.PI / 180);
+        const elevationSpeed = 4.0 * (Math.PI / 180); // Fast elevation
 
         if (Math.abs(elevationDiff) > 0.01) {
             tank.gunElevation += Math.sign(elevationDiff) *
